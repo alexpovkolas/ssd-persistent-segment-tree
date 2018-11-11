@@ -8,7 +8,7 @@
 #include <cstdio>
 #include <fstream>
 
-//#define __PROFILE__
+#define __PROFILE__
 
 using namespace std;
 
@@ -86,10 +86,10 @@ VALUE_TYPE PersistentSegmentTree::traversal(size_t from, size_t to, size_t curre
 }
 
 size_t PersistentSegmentTree::increment(size_t position) {
-    size_t current = *roots.end();
+    size_t current = roots.back();
     roots.push_back(nodes.size());
     inc_traversal(position, current, 1, 0, values_first_index);
-    return roots.size();
+    return roots.size() - 1;
 }
 
 void PersistentSegmentTree::inc_traversal(size_t position, size_t previous, size_t current_depth_count, size_t left, size_t right) {
