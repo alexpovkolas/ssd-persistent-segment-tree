@@ -48,7 +48,7 @@ PersistentSegmentTree::PersistentSegmentTree(size_t size, size_t versions): elem
     roots.resize(1);
 
     size_t depth = ceil(log2(size)) + 1;
-    size_t nodes_count = pow(2, depth);
+    size_t nodes_count = pow(2, depth) - 1;
 
     nodes.reserve(nodes_count + depth * versions);
     nodes.resize(nodes_count);
@@ -138,7 +138,7 @@ int main() {
 
     for (int i = 0; i < n; ++i) {
         cin >> items[i].first;
-        items[i].second = i + 1;
+        items[i].second = i;
     }
 
     sort(items.begin(), items.end(), [](auto &left, auto &right) {
@@ -185,12 +185,12 @@ int main() {
             --up;
         }
 
-        VALUE_TYPE up_count = tree.count(l, r, up->second);
+        VALUE_TYPE up_count = tree.count(l-1, r-1, up->second);
 
         VALUE_TYPE low_count = 0;
         if (low != trees.begin()) {
             low--;
-            low_count = tree.count(l, r, low->second);
+            low_count = tree.count(l-1, r-1, low->second);
         }
 
         cout << up_count - low_count << endl;
