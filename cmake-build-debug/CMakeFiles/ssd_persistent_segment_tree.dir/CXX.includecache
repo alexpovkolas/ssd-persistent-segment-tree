@@ -1,0 +1,22 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/alex/study/ssd-persistent-segment-tree/main.cpp
+iostream
+-
+vector
+-
+math.h
+-
+algorithm
+-
+cstdio
+-
+fstream
+-
+

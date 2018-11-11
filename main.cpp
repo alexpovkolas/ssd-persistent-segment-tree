@@ -44,7 +44,7 @@ VALUE_TYPE SegmentTree::traversal(int index, int cur_l, int cur_r, int l, int r)
         return 0;
 
     if (cur_l == l && cur_r == r) {
-        return nodes[index].count;
+        return nodes[index];
     }
     int middle = (cur_l + cur_r) / 2;
     return traversal(index * 2, cur_l, middle, l, std::min(r, middle))
@@ -53,7 +53,7 @@ VALUE_TYPE SegmentTree::traversal(int index, int cur_l, int cur_r, int l, int r)
 
 void SegmentTree::inc_traversal(int index, int  cur_l, int cur_r, int position) {
     if (cur_l == cur_r) {
-        nodes[index].count++;
+        nodes[index]++;
         return;
     }
 
@@ -64,7 +64,7 @@ void SegmentTree::inc_traversal(int index, int  cur_l, int cur_r, int position) 
         inc_traversal(index * 2 + 1, middle + 1, cur_r, position);
     }
 
-    nodes[index].count = nodes[index * 2].count + nodes[index * 2 + 1].count;
+    nodes[index] = nodes[index * 2] + nodes[index * 2 + 1];
 }
 
 size_t SegmentTree::get_n() {
@@ -85,7 +85,7 @@ int main() {
 
     for (int i = 0; i < n; ++i) {
         cin >> items[i].first;
-        items[i].second = i;
+        items[i].second = i + 1;
     }
 
     sort(items.begin(), items.end(), [](auto &left, auto &right) {
@@ -94,15 +94,16 @@ int main() {
 
     vector<pair<int, SegmentTree*>> trees;
 
+
     int current = -1;
+    SegmentTree *tree = 0;
     for (auto &i : items) {
         if (current != i.first) {
             current = i.first;
-            SegmentTree *tree = new SegmentTree(items.size());
+            tree = !tree ? new SegmentTree(items.size()) : new SegmentTree(*tree);
             tree->increment(i.second);
             trees.push_back(make_pair(current, tree));
         } else {
-            SegmentTree *tree = trees.end()->second;
             tree->increment(i.second);
         }
     }
@@ -111,15 +112,27 @@ int main() {
         int l, r, x, y;
         cin >> l >> r >> x >> y;
 
-        auto up = upper_bound(trees.begin(), trees.end(), y, [](auto &left, auto &right) {
+        auto up = upper_bound(trees.begin(), trees.end(), make_pair(y, NULL), [](auto &left, auto &right) {
             return left.first < right.first;
         });
 
-        auto low = lower_bound(trees.begin(), trees.end(), y, [](auto &left, auto &right) {
+        auto low = lower_bound(trees.begin(), trees.end(), make_pair(x, NULL), [](auto &left, auto &right) {
             return left.first < right.first;
         });
 
-        cout << up->second->count(l, r) - low->second->count(l, r) << endl;
+        if (up != trees.begin()) {
+            --up;
+        }
+
+        VALUE_TYPE up_count = up->second->count(l, r);
+
+        VALUE_TYPE low_count = 0;
+        if (low != trees.begin()) {
+            low--;
+            low_count = low->second->count(l, r);
+        }
+
+        cout << up_count - low_count << endl;
     }
 
 
