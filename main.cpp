@@ -14,62 +14,108 @@ using namespace std;
 
 typedef unsigned int VALUE_TYPE;
 
-class SegmentTree {
+class PersistentSegmentTree {
 
-    vector<VALUE_TYPE> nodes;
+    struct Node {
+        VALUE_TYPE value;
+        size_t left;
+        size_t right;
 
-    VALUE_TYPE traversal(int index, int cur_l, int cur_r, int l, int r);
-    void inc_traversal(int index, int  cur_l, int cur_r, int position);
-    size_t get_n();
+        Node(VALUE_TYPE value = 0, size_t left = (size_t)-1, size_t right = (size_t)-1): value(value), left(left), right(right) {}
+    };
+
+    vector<Node> nodes;
+    vector<size_t> roots;
+    size_t element_count;
+    size_t values_first_index;
+
+    void build(size_t current, size_t current_depth_count);
+    VALUE_TYPE traversal(size_t from, size_t to, size_t current, size_t left, size_t right);
+    void inc_traversal(size_t position, size_t previous, size_t current_depth_count, size_t left, size_t right);
 
 public:
 
-    SegmentTree(size_t size): nodes( pow(2, ceil(log2(size)) + 1) ) {};
-    SegmentTree(const SegmentTree& rhs): nodes(rhs.nodes) {}
+    PersistentSegmentTree(size_t size);
+    PersistentSegmentTree(const PersistentSegmentTree& rhs): nodes(rhs.nodes) {}
 
-    void increment(int index);
-    VALUE_TYPE count(int left, int right);
+    size_t increment(size_t index);
+    VALUE_TYPE count(size_t left, size_t right, size_t version);
 };
 
-void SegmentTree::increment(int position) {
-    inc_traversal(1, 0, get_n(), position);
+
+PersistentSegmentTree::PersistentSegmentTree(size_t size): element_count(size), values_first_index((size_t)-1), roots(1, 0) {
+    build(0, 1);
 }
 
-VALUE_TYPE SegmentTree::count(int left, int right){
-    return traversal(1, 0, get_n(), left, right);;
-}
+void PersistentSegmentTree::build(size_t current, size_t current_depth_count) {
+    nodes.resize(max(nodes.size(), current + 1));
 
-VALUE_TYPE SegmentTree::traversal(int index, int cur_l, int cur_r, int l, int r) {
-    if (l > r)
-        return 0;
+    if (current_depth_count >= element_count)
+    {
+        if (values_first_index == (size_t)-1)
+        {
+            values_first_index = current;
+        }
 
-    if (cur_l == l && cur_r == r) {
-        return nodes[index];
-    }
-    int middle = (cur_l + cur_r) / 2;
-    return traversal(index * 2, cur_l, middle, l, std::min(r, middle))
-                        + traversal(index * 2 + 1, middle + 1, cur_r, std::max(l, middle + 1), r);
-}
-
-void SegmentTree::inc_traversal(int index, int  cur_l, int cur_r, int position) {
-    if (cur_l == cur_r) {
-        nodes[index]++;
-        return;
-    }
-
-    int middle = (cur_l + cur_r) / 2;
-    if (position <= middle) {
-        inc_traversal(index * 2, cur_l, middle, position);
+        nodes[current] = Node();
     } else {
-        inc_traversal(index * 2 + 1, middle + 1, cur_r, position);
+        size_t left = 2 * current + 1;
+        size_t right = 2 * current + 2;
+
+        build(left, current_depth_count * 2);
+        build(right, current_depth_count * 2);
+
+        nodes[current] = Node(nodes[left].value + nodes[right].value, left, right);
     }
-
-    nodes[index] = nodes[index * 2] + nodes[index * 2 + 1];
 }
 
-size_t SegmentTree::get_n() {
-    return nodes.size() / 2 - 1;
+VALUE_TYPE PersistentSegmentTree::count(size_t left, size_t right, size_t version){
+    return traversal(left, right, roots[version], 0, values_first_index);
 }
+
+VALUE_TYPE PersistentSegmentTree::traversal(size_t from, size_t to, size_t current, size_t left, size_t right) {
+    if (from > to) {
+        return 0;
+    }
+    if (from == left && to == right) {
+        return nodes[current].value;
+    }
+    size_t middle = (left + right) / 2;
+    return traversal(from, min(to, middle), nodes[current].left, left, middle) +
+                       traversal(max(middle + 1, from), to, nodes[current].right, middle + 1, right);
+}
+
+size_t PersistentSegmentTree::increment(size_t position) {
+    size_t current = *roots.end();
+    roots.push_back(nodes.size());
+    inc_traversal(position, current, 1, 0, values_first_index);
+    return roots.size();
+}
+
+void PersistentSegmentTree::inc_traversal(size_t position, size_t previous, size_t current_depth_count, size_t left, size_t right) {
+    size_t new_node = nodes.size();
+    nodes.push_back(Node());
+
+    if (current_depth_count >= element_count)
+    {
+        nodes[new_node].value++;
+    } else {
+        size_t middle = (left + right) / 2;
+        if (position <= middle)
+        {
+            nodes[new_node].left = nodes.size();
+            nodes[new_node].right = nodes[previous].right;
+            inc_traversal(position, nodes[previous].left, 2 * current_depth_count, left, middle);
+        } else {
+            nodes[new_node].left = nodes[previous].left;
+            nodes[new_node].right = nodes.size();
+            inc_traversal(position, nodes[previous].right, 2 * current_depth_count, middle + 1, right);
+        }
+
+        nodes[new_node].value = nodes[nodes[new_node].left].value + nodes[nodes[new_node].right].value;
+    }
+}
+
 
 int main() {
 #ifdef __PROFILE__
@@ -92,19 +138,18 @@ int main() {
         return left.first < right.first;
     });
 
-    vector<pair<int, SegmentTree*>> trees;
+    vector<pair<int, size_t >> trees;
 
 
     int current = -1;
-    SegmentTree *tree = 0;
+    PersistentSegmentTree tree(items.size());
     for (auto &i : items) {
+        size_t version = tree.increment(i.second);
         if (current != i.first) {
             current = i.first;
-            tree = !tree ? new SegmentTree(items.size()) : new SegmentTree(*tree);
-            tree->increment(i.second);
-            trees.push_back(make_pair(current, tree));
+            trees.push_back(make_pair(i.first, version));
         } else {
-            tree->increment(i.second);
+            trees.back().second = version;
         }
     }
 
@@ -124,12 +169,12 @@ int main() {
             --up;
         }
 
-        VALUE_TYPE up_count = up->second->count(l, r);
+        VALUE_TYPE up_count = tree.count(l, r, up->second);
 
         VALUE_TYPE low_count = 0;
         if (low != trees.begin()) {
             low--;
-            low_count = low->second->count(l, r);
+            low_count = tree.count(l, r, low->second);
         }
 
         cout << up_count - low_count << endl;
