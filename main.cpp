@@ -35,7 +35,7 @@ class PersistentSegmentTree {
 
 public:
 
-    PersistentSegmentTree(size_t size);
+    PersistentSegmentTree(size_t size, size_t reserve);
     PersistentSegmentTree(const PersistentSegmentTree& rhs): nodes(rhs.nodes) {}
 
     size_t increment(size_t index);
@@ -43,12 +43,19 @@ public:
 };
 
 
-PersistentSegmentTree::PersistentSegmentTree(size_t size): element_count(size), values_first_index((size_t)-1), roots(1, 0) {
+PersistentSegmentTree::PersistentSegmentTree(size_t size, size_t versions): element_count(size), values_first_index((size_t)-1) {
+    roots.reserve(versions);
+    roots.resize(1);
+
+    size_t depth = ceil(log2(size)) + 1;
+    size_t nodes_count = pow(2, depth);
+
+    nodes.reserve(nodes_count + depth * versions);
+    nodes.resize(nodes_count);
     build(0, 1);
 }
 
 void PersistentSegmentTree::build(size_t current, size_t current_depth_count) {
-    nodes.resize(max(nodes.size(), current + 1));
 
     if (current_depth_count >= element_count)
     {
@@ -138,11 +145,20 @@ int main() {
         return left.first < right.first;
     });
 
+    int current = -1;
+    size_t operations = 0;
+    for (auto &i : items) {
+        if (current != i.first) {
+            current = i.first;
+            operations++;
+        }
+    }
+
     vector<pair<int, size_t >> trees;
 
 
-    int current = -1;
-    PersistentSegmentTree tree(items.size());
+    current = -1;
+    PersistentSegmentTree tree(items.size(), operations);
     for (auto &i : items) {
         size_t version = tree.increment(i.second);
         if (current != i.first) {
